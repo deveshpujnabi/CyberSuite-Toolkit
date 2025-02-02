@@ -1,5 +1,5 @@
 # Install git to clone SQLmap repository
-!apt-get install git
+!apt-get install git -y
 
 # Clone the SQLmap repository
 !git clone --recursive https://github.com/sqlmapproject/sqlmap.git
