@@ -1,1 +1,7 @@
-
+gradio
+requests
+dnspython
+opencv-python
+pyzbar
+pandas
+matplotlib
