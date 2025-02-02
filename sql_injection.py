@@ -1,16 +1,23 @@
-# Install git to clone SQLmap repository
-!apt-get install git -y
-
-# Clone the SQLmap repository
-!git clone --recursive https://github.com/sqlmapproject/sqlmap.git
-
 import subprocess
 import gradio as gr
 
+def install_sqlmap():
+    """Install SQLMap by cloning the repository if it's not already cloned."""
+    try:
+        # Install git if necessary
+        subprocess.run(['apt-get', 'install', 'git', '-y'], check=True)
+
+        # Clone the SQLmap repository if it's not already cloned
+        subprocess.run(['git', 'clone', '--recursive', 'https://github.com/sqlmapproject/sqlmap.git'], check=True)
+
+        return "SQLMap installed successfully!"
+    except subprocess.CalledProcessError as e:
+        return f"Error installing SQLMap: {e}"
+
 def run_sqlmap(url):
     try:
-        # Define the path to sqlmap.py
-        sqlmap_path = '/content/sqlmap/sqlmap.py'
+        # Path to the sqlmap script
+        sqlmap_path = '/content/sqlmap/sqlmap.py'  # Adjust path based on your environment
 
         # Create the SQLmap command
         command = [
@@ -35,7 +42,6 @@ def run_sqlmap(url):
             else:
                 file.write(f"Error: {result.stderr}")
 
-        # Return the file path for downloading
         return output_file
     except Exception as e:
         error_file = "/content/sqlmap_error.txt"
