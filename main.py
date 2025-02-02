@@ -1,6 +1,6 @@
 import gradio as gr
 from qr_detector import decode_and_audit
-from phishing_checker import phishing_email_checker
+from phishing_checker import phishing_email_checker, phishing_url_checker, phishing_sms_checker
 from data_breach_checker import check_password_breach
 from sql_injection import sql_injection_checker
 
@@ -53,7 +53,7 @@ def display_tool(selected_tool):
             breach_input = gr.Textbox(label="Enter Password", type="password")
             breach_output = gr.Textbox(label="Breach Status")
             breach_button = gr.Button("Check Breach Status")
-            breach_button.click(gradio_breach_checker, inputs=breach_input, outputs=breach_output)
+            breach_button.click(check_password_breach, inputs=breach_input, outputs=breach_output)
         return breach_checker_ui
 
     elif selected_tool == "💉 SQL Injection Checker":
