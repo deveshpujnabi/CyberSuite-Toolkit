@@ -1,7 +1,7 @@
 import gradio as gr
 from qr_detector import decode_and_audit
 from phishing_checker import phishing_email_checker
-from data_breach_checker import data_breach_checker
+from data_breach_checker import check_password_breach
 from sql_injection import sql_injection_checker
 
 # Define menu options
