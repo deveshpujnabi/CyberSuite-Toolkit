@@ -1,3 +1,9 @@
+# Install git to clone SQLmap repository
+!apt-get install git
+
+# Clone the SQLmap repository
+!git clone --recursive https://github.com/sqlmapproject/sqlmap.git
+
 import subprocess
 import gradio as gr
 
