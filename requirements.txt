@@ -1,0 +1,10 @@
+gradio 
+sqlmap
+opencv-python 
+numpy 
+matplotlib 
+requests 
+hashlib 
+beautifulsoup4 
+dns-python 
+cryptography
