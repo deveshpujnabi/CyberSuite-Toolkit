@@ -1,101 +1,89 @@
-# phishing_checker/phishing_checker.py
 import requests
-import re
-import dns.resolver
-from urllib.parse import urlparse
+import gradio as gr
+import validators
+import tldextract
+from bs4 import BeautifulSoup
 
-def phishing_url_checker(url, api_key=None):
-    """
-    Checks if a URL is potentially malicious using keyword analysis and optional urlscan.io API.
-    
-    Args:
-        url (str): The URL to check.
-        api_key (str, optional): API key for urlscan.io.
-    
-    Returns:
-        str: Analysis result.
-    """
-    if not url.startswith(("http://", "https://")):
-        return "Invalid URL format. Make sure it starts with http:// or https://"
+# Your Google Safe Browsing API key
+GOOGLE_API_KEY = "Your-API-Key"
+SAFE_BROWSING_URL = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
 
-    parsed_url = urlparse(url)
-    domain = parsed_url.netloc.lower()
+# List of suspicious keywords commonly found in phishing pages
+suspicious_keywords = [
+    'login', 'verify', 'update', 'secure', 'account', 'password',
+    'free', 'urgent', 'click', 'offer', 'limited', 'winner', 'claim'
+]
 
-    # Check for phishing-related keywords
-    phishing_keywords = ["login", "verify", "banking", "secure", "update", "password", "account"]
-    if any(keyword in url.lower() for keyword in phishing_keywords):
-        return f"⚠️ Suspicious URL detected: Contains phishing-related keywords ({', '.join(phishing_keywords)})"
+# Check with Google Safe Browsing API
+def check_google_safe_browsing(url):
+    payload = {
+        "client": {
+            "clientId": "phishing-link-scanner",
+            "clientVersion": "1.0"
+        },
+        "threatInfo": {
+            "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"],
+            "platformTypes": ["ANY_PLATFORM"],
+            "threatEntryTypes": ["URL"],
+            "threatEntries": [{"url": url}]
+        }
+    }
 
-    # Check for excessive subdomains
-    if domain.count('.') > 2:
-        return f"⚠️ Suspicious URL: {domain} has too many subdomains, a common phishing technique."
-
-    # Optional: Check with urlscan.io
-    if api_key:
-        return check_with_urlscan(api_key, url)
-    
-    return "✅ URL appears safe (No immediate threats detected). However, always verify manually."
-
-
-def check_with_urlscan(api_key, url):
-    urlscan_url = "https://urlscan.io/api/v1/scan/"
-    headers = {"API-Key": api_key, "Content-Type": "application/json"}
-    payload = {"url": url, "visibility": "public"}
-    
     try:
-        response = requests.post(urlscan_url, json=payload, headers=headers)
-        response.raise_for_status()
-        result_data = response.json()
-        scan_id = result_data.get("uuid")
-        if scan_id:
-            return f"🔍 URL submitted for scanning. View detailed report here: https://urlscan.io/result/{scan_id}/"
+        response = requests.post(f"{SAFE_BROWSING_URL}?key={GOOGLE_API_KEY}", json=payload, timeout=5)
+        data = response.json()
+
+        if "matches" in data:
+            return True, data["matches"]
         else:
-            return "⚠️ Error: Unable to retrieve scan result."
+            return False, None
+
     except requests.exceptions.RequestException as e:
-        return f"⚠️ Error contacting urlscan.io: {str(e)}"
+        return False, f"Error checking with Safe Browsing: {str(e)}"
 
+# Function to check if a domain is suspicious
+def is_suspicious_domain(url):
+    extracted = tldextract.extract(url)
+    domain = f"{extracted.domain}.{extracted.suffix}"
 
-def phishing_email_checker(email):
-    """
-    Checks if an email domain has valid MX records.
-    
-    Args:
-        email (str): The email address to check.
-    
-    Returns:
-        str: Email validation result.
-    """
-    if "@" not in email:
-        return "Invalid email format."
-    
-    domain = email.split('@')[-1]
+    # Flag unusual subdomains (e.g., "secure-login.bank.com")
+    if extracted.subdomain and extracted.subdomain not in ["www", ""]:
+        return True
+
+    return False
+
+# Function to scan the URL for phishing indicators
+def scan_phishing(url):
+    # Validate URL
+    if not validators.url(url):
+        return "❌ Invalid URL. Please enter a valid URL."
+
+    # Check with Google Safe Browsing API
+    safe, details = check_google_safe_browsing(url)
+    if safe:
+        return f"🚨 Unsafe URL detected by Google Safe Browsing!\nDetails: {details}"
+
+    # Check domain for suspicious patterns
+    if is_suspicious_domain(url):
+        return "⚠️ Suspicious domain detected! This could be a phishing link."
+
     try:
-        answers = dns.resolver.resolve(domain, 'MX')
-        if answers:
-            return f"✅ Email domain '{domain}' has valid MX records. Likely legitimate."
-    except:
-        return f"⚠️ Warning: Email domain '{domain}' has no valid mail exchange records."
-    
-    return f"⚠️ Unable to verify email domain '{domain}'."
+        # Request webpage with timeout
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=5)
 
+        if response.status_code != 200:
+            return f"⚠️ Failed to access page. HTTP Status Code: {response.status_code}"
 
-def phishing_sms_checker(sms_text):
-    """
-    Scans an SMS message for phishing indicators.
-    
-    Args:
-        sms_text (str): The SMS content.
-    
-    Returns:
-        str: Analysis result.
-    """
-    phishing_keywords = ["urgent", "bank", "click here", "verify", "account locked", "reset password"]
-    shortened_url_patterns = ["bit.ly", "tinyurl.com", "goo.gl", "t.co"]
+        # Extract page title
+        soup = BeautifulSoup(response.content, 'html.parser')
+        title = soup.title.string if soup.title else "No title found"
 
-    if any(keyword in sms_text.lower() for keyword in phishing_keywords):
-        return f"⚠️ Suspicious SMS detected: Contains phishing-related keywords ({', '.join(phishing_keywords)})"
+        # Check if title contains phishing indicators
+        if any(keyword in title.lower() for keyword in suspicious_keywords):
+            return f"⚠️ Phishing warning! The page title contains suspicious words: {title}"
 
-    if any(url in sms_text.lower() for url in shortened_url_patterns):
-        return f"⚠️ Suspicious SMS detected: Contains a shortened URL ({', '.join(shortened_url_patterns)}), often used in phishing."
+        return f"✅ Safe! No phishing indicators detected. Page Title: {title}"
 
-    return "✅ SMS appears safe. No immediate threats detected."
+    except requests.exceptions.RequestException as e:
+        return f"❌ Error scanning URL: {str(e)}"
