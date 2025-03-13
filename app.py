@@ -2,47 +2,61 @@
 import gradio as gr
 from sql_injection.sql_injection import run_sqlmap
 from qr_detector.qr_detector import qr_code_audit_app
-from phishing_checker.phishing_checker import phishing_url_checker, phishing_email_checker, phishing_sms_checker
 from data_breach_checker.password_checker import gradio_password_strength, gradio_generate_password, gradio_breach_checker
-from vulnerability_scanner.vulnerability_scanner import vulnerability_scanner
+from phishing_checker import scan_phishing
+from vulnerability_scanner.vulnerability_scanner import scan_website
 from encryption_tool.encryption_tool import generate_key, encrypt_message, decrypt_message
 
 # Create the Gradio interface
 with gr.Blocks() as demo:
     gr.Markdown("# 🛡️ CyberSuite Toolkit Dashboard")
 
-    with gr.Tab("SQL Injection"):
+    with gr.Tab("SQL Injection Test"):
+        with gr.Row():
+            with gr.Column(scale=7):
+                gr.Markdown("### Enter URL to test for SQL Injection")
+                url_input = gr.Textbox(placeholder="Enter target URL")
+                
+                with gr.Row():
+                    submit_btn = gr.Button("Submit")
+                    clear_btn = gr.Button("Clear")
+                
+                gr.Markdown("### Test Results")
+                test_output = gr.Textbox(label="Results", lines=10)
+            
+            with gr.Column(scale=3):
+                gr.Markdown("### Report")
+                download_btn = gr.File(label="Download Full Report")
+    
+    submit_btn.click(run_sqlmap, inputs=url_input, outputs=[test_output, download_btn])
+    clear_btn.click(lambda: ("", None), outputs=[test_output, download_btn])
+
+    with gr.Tab("Phishing Detection Tool"):
         gr.Interface(
-            fn=run_sqlmap,
-            inputs=gr.Textbox(label="Enter URL to test for SQL Injection"),
-            outputs="file",
-            title="SQL Injection Testing with SQLmap",
-            description="Test a URL for SQL Injection using SQLmap automation. Download the results after the scan."
+            fn=scan_phishing,
+            inputs=gr.Textbox(label="Enter a URL"),
+            outputs=gr.Textbox(label="Scan Result"),
+            title="Phishing Detection Tool",
+            description="Enter a URL to check if it contains suspicious elements like phishing keywords, unusual domain patterns, or is flagged by Google Safe Browsing."
         )
 
     with gr.Tab("QR Detector"):
         gr.Interface(
             fn=qr_code_audit_app,
-            inputs=[gr.Image(label="Upload or Capture QR Code"), gr.Textbox(label="urlscan.io API Key (Optional)")],
-            outputs=[
-                gr.Textbox(label="Analysis Result"),
-                gr.Textbox(label="Decoded QR Data"),
-                gr.Textbox(label="Link Category"),
-                gr.Textbox(label="URL Type (Safe, Potential Issue, Malicious)"),
-                gr.Textbox(label="urlscan.io Report Link")
-            ]
-        )
+            inputs=[
+        gr.Image(label="Upload or Capture QR Code"),
 
-    with gr.Tab("Phishing Detection"):
-        with gr.Tab("URL Phishing Checker"):
-            gr.Interface(fn=phishing_url_checker, inputs=[
-                gr.Textbox(label="Enter URL", placeholder="https://example.com"),
-                gr.Textbox(label="urlscan.io API Key (Optional)")
-            ], outputs="text")
-        with gr.Tab("Email Phishing Checker"):
-            gr.Interface(fn=phishing_email_checker, inputs="text", outputs="text")
-        with gr.Tab("SMS Phishing Checker"):
-            gr.Interface(fn=phishing_sms_checker, inputs="text", outputs="text")
+    ],
+    outputs=[
+        gr.Textbox(label="Analysis Result"),
+        gr.Textbox(label="Decoded QR Data"),
+        gr.Textbox(label="Link Category"),
+        gr.Textbox(label="URL Type (Safe, Potential Issue, Malicious)"),
+        gr.Textbox(label="urlscan.io Report Link")
+    ],
+    title="QR Code Audit Detector",
+    description="Scan, audit, and analyze QR codes for potential threats and link type categorization. Uses urlscan.io for URL analysis."
+)
 
     with gr.Tab("Password & Data Breach Management"):
         with gr.Tab("Check Password Strength"):
@@ -60,9 +74,12 @@ with gr.Blocks() as demo:
     
     with gr.Tab("Vulnerability Scanner"):
         gr.Interface(
-            fn=vulnerability_scanner,
-            inputs=gr.Textbox(label="Enter Website URL", placeholder="https://example.com"),
-            outputs=gr.Textbox(label="Scan Results")
+            fn=scan_website,
+            inputs=gr.Textbox(label="Enter Website URL", placeholder="http://example.com", lines=1),
+            outputs=gr.Textbox(label="Scan Report", interactive=False, lines=20),
+            live=False,
+            title="Website Vulnerability Scanner",
+            description="Enter the website URL to scan for common vulnerabilities such as SSL, SQL Injection, XSS, and Security Headers."
         )
 
     with gr.Tab("Encryption Tool"):
