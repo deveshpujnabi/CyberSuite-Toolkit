@@ -1,10 +1,12 @@
 gradio 
-sqlmap
 opencv-python 
-numpy 
+numpy
 matplotlib 
-requests 
-hashlib 
 beautifulsoup4 
-dns-python 
+dnspython 
 cryptography
+requests
+tldextract
+validators
+python-whois
+python-nmap
