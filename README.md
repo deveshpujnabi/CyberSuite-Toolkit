@@ -19,7 +19,7 @@ CyberSuite-Toolkit/
 ## ⚡ Features
 - **SQL Injection Testing** — Scan URLs for SQL injection vulnerabilities with SQLmap.
 - **QR Code Detector** — Scan QR codes and analyze the URLs for potential threats.
-- **Phishing Detection** — Check URLs, emails, and SMS for phishing indicators.
+- **Phishing Detection** — Check URLs for phishing indicators.
 - **Password & Breach Management** — Check password strength, generate secure passwords, and check breaches with Have I Been Pwned.
 - **Vulnerability Scanner** — Scan websites for misconfigurations, outdated software, and more.
 - **Encryption Tool** — Encrypt, decrypt messages, and generate secure encryption keys.
@@ -81,8 +81,8 @@ Gradio will provide you with a local or public link to access the toolkit in you
 - Audits decoded URLs for potential risks (file downloads, social media, etc.).
 
 ### Phishing Checker
-- URL, email, and SMS phishing detection.
-- Optionally integrates with urlscan.io for deep URL scans.
+- URL phishing detection.
+- Optionally integrates with Google Safe Browsing API for deep URL scans.
 
 ### Password & Breach Management
 - Password strength checking and feedback.
