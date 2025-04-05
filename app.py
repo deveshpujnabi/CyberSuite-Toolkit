@@ -7,7 +7,7 @@ from data_breach_checker.password_checker import (
     gradio_generate_password,
     gradio_breach_checker,
 )
-from phishing import scan_phishing
+from phishing_checker import scan_phishing
 from vulnerability_scanner.vulnerability_scanner import scan_website
 from encryption_tool.encryption_tool import generate_key, encrypt_message, decrypt_message
 
